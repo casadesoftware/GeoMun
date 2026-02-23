@@ -14,19 +14,30 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   private async seed() {
-    const email = process.env.ADMIN_EMAIL || 'admin@geomun.local';
-    const existing = await this.user.findUnique({ where: { email } });
-    if (existing) return;
+    // Seed tenant por defecto
+    let defaultTenant = await this.tenant.findUnique({ where: { slug: 'default' } });
+    if (!defaultTenant) {
+      defaultTenant = await this.tenant.create({
+        data: { name: 'Default', slug: 'default' },
+      });
+      console.log('[Seed] Tenant default creado');
+    }
 
-    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin123!', 10);
-    await this.user.create({
-      data: {
-        email,
-        password: hash,
-        name: process.env.ADMIN_NAME || 'Administrador',
-        role: 'ADMIN',
-      },
-    });
-    console.log(`[Seed] Admin creado: ${email}`);
+    // Seed SUPERADMIN (sin tenant)
+    const saEmail = process.env.ADMIN_EMAIL || 'admin@geomun.local';
+    const existingSa = await this.user.findUnique({ where: { email: saEmail } });
+    if (!existingSa) {
+      const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin123!', 10);
+      await this.user.create({
+        data: {
+          email: saEmail,
+          password: hash,
+          name: process.env.ADMIN_NAME || 'Administrador',
+          role: 'SUPERADMIN',
+          tenantId: null,
+        },
+      });
+      console.log(`[Seed] SUPERADMIN creado: ${saEmail}`);
+    }
   }
 }

@@ -8,8 +8,25 @@ datasource db {
 }
 
 enum Role {
+  SUPERADMIN
   ADMIN
   EDITOR
+}
+
+model Tenant {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  slug      String   @unique
+  active    Boolean  @default(true)
+  config    Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users     User[]
+  maps      Map[]
+  auditLogs AuditLog[]
+
+  @@map("tenants")
 }
 
 model User {
@@ -19,9 +36,11 @@ model User {
   name      String
   role      Role     @default(EDITOR)
   active    Boolean  @default(true)
+  tenantId  String?  @map("tenant_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  tenant    Tenant?    @relation(fields: [tenantId], references: [id])
   auditLogs AuditLog[]
   layers    Layer[]
   maps      Map[]
@@ -36,10 +55,12 @@ model Map {
   isPublic  Boolean  @default(false) @map("is_public")
   theme     String?
   config    Json?
+  tenantId  String   @map("tenant_id") @db.Uuid
   createdBy String   @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
   creator User    @relation(fields: [createdBy], references: [id])
   layers  Layer[]
 
@@ -82,13 +103,15 @@ model Feature {
 model AuditLog {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
   action    String
   entity    String
   entityId  String?  @map("entity_id")
   details   Json?
   createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
 
   @@map("audit_logs")
 }

@@ -1,0 +1,208 @@
+<div class="p-6">
+  <!-- Tabs -->
+  <div class="flex gap-2 mb-6">
+    <button (click)="switchTab('tenants')" [class]="activeTab() === 'tenants' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Tenants</button>
+    <button (click)="switchTab('users')" [class]="activeTab() === 'users' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Usuarios</button>
+    <button (click)="switchTab('audit')" [class]="activeTab() === 'audit' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Auditoría</button>
+  </div>
+
+  <!-- === TENANTS === -->
+  @if (activeTab() === 'tenants') {
+    <div class="glass p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Gestión de Tenants</h2>
+        <button (click)="openTenantForm()" class="btn-primary text-sm">+ Nuevo tenant</button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-white/50 border-b border-white/10">
+              <th class="pb-3 pr-4">Nombre</th>
+              <th class="pb-3 pr-4">Slug</th>
+              <th class="pb-3 pr-4">Usuarios</th>
+              <th class="pb-3 pr-4">Mapas</th>
+              <th class="pb-3 pr-4">Estado</th>
+              <th class="pb-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tenant of tenants(); track tenant.id) {
+              <tr class="border-b border-white/5 hover:bg-white/5">
+                <td class="py-3 pr-4 font-medium">{{ tenant.name }}</td>
+                <td class="py-3 pr-4 text-white/40 font-mono text-xs">{{ tenant.slug }}</td>
+                <td class="py-3 pr-4 text-center">{{ tenant._count?.users || 0 }}</td>
+                <td class="py-3 pr-4 text-center">{{ tenant._count?.maps || 0 }}</td>
+                <td class="py-3 pr-4">
+                  <span [class]="tenant.active ? 'text-green-400' : 'text-red-400'" class="text-xs">
+                    {{ tenant.active ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td class="py-3">
+                  <div class="flex gap-2">
+                    <button (click)="openTenantForm(tenant)" class="text-xs text-primary-400 hover:text-primary-300">Editar</button>
+                    <button (click)="toggleTenantActive(tenant)" class="text-xs" [class]="tenant.active ? 'text-red-400 hover:text-red-300' : 'text-green-400 hover:text-green-300'">
+                      {{ tenant.active ? 'Desactivar' : 'Activar' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="py-8 text-center text-white/30">Sin tenants</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tenant Form Modal -->
+    @if (showTenantForm()) {
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" (click)="showTenantForm.set(false)">
+        <div class="glass p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-semibold mb-4">{{ editingTenant() ? 'Editar' : 'Nuevo' }} Tenant</h3>
+          <form [formGroup]="tenantForm" (ngSubmit)="saveTenant()" class="space-y-4">
+            <div>
+              <label class="label-glass">Nombre</label>
+              <input formControlName="name" class="input-glass" placeholder="Ej: Municipio de Coatepec">
+            </div>
+            <div>
+              <label class="label-glass">Slug (identificador URL)</label>
+              <input formControlName="slug" class="input-glass" placeholder="Ej: coatepec">
+            </div>
+            <div class="flex gap-3 justify-end">
+              <button type="button" (click)="showTenantForm.set(false)" class="btn-secondary text-sm">Cancelar</button>
+              <button type="submit" [disabled]="tenantForm.invalid" class="btn-primary text-sm disabled:opacity-50">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- === USUARIOS === -->
+  @if (activeTab() === 'users') {
+    <div class="glass p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Usuarios de todos los Tenants</h2>
+        <button (click)="openUserForm()" class="btn-primary text-sm">+ Nuevo usuario</button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-white/50 border-b border-white/10">
+              <th class="pb-3 pr-4">Nombre</th>
+              <th class="pb-3 pr-4">Email</th>
+              <th class="pb-3 pr-4">Rol</th>
+              <th class="pb-3 pr-4">Tenant</th>
+              <th class="pb-3 pr-4">Estado</th>
+              <th class="pb-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr class="border-b border-white/5 hover:bg-white/5">
+                <td class="py-3 pr-4">{{ user.name }}</td>
+                <td class="py-3 pr-4 text-white/60">{{ user.email }}</td>
+                <td class="py-3 pr-4">
+                  <span class="text-xs font-medium uppercase"
+                        [class]="user.role === 'SUPERADMIN' ? 'text-purple-400' : user.role === 'ADMIN' ? 'text-amber-400' : 'text-primary-400'">
+                    {{ user.role }}
+                  </span>
+                </td>
+                <td class="py-3 pr-4 text-white/40 text-xs">{{ getTenantName(user.tenantId) }}</td>
+                <td class="py-3 pr-4">
+                  <span [class]="user.active ? 'text-green-400' : 'text-red-400'" class="text-xs">{{ user.active ? 'Activo' : 'Inactivo' }}</span>
+                </td>
+                <td class="py-3">
+                  <div class="flex gap-2">
+                    <button (click)="openUserForm(user)" class="text-xs text-primary-400 hover:text-primary-300">Editar</button>
+                    <button (click)="deleteUser(user)" class="text-xs text-red-400 hover:text-red-300">Desactivar</button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="py-8 text-center text-white/30">Sin usuarios</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- User Form Modal -->
+    @if (showUserForm()) {
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" (click)="showUserForm.set(false)">
+        <div class="glass p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-semibold mb-4">{{ editingUser() ? 'Editar' : 'Nuevo' }} Usuario</h3>
+          <form [formGroup]="userForm" (ngSubmit)="saveUser()" class="space-y-4">
+            <div>
+              <label class="label-glass">Tenant</label>
+              <select formControlName="tenantId" class="input-glass">
+                <option value="">Seleccionar tenant</option>
+                @for (t of tenants(); track t.id) {
+                  <option [value]="t.id">{{ t.name }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="label-glass">Nombre</label>
+              <input formControlName="name" class="input-glass">
+            </div>
+            <div>
+              <label class="label-glass">Email</label>
+              <input type="email" formControlName="email" class="input-glass">
+            </div>
+            <div>
+              <label class="label-glass">Contraseña {{ editingUser() ? '(vacío = no cambiar)' : '' }}</label>
+              <input type="password" formControlName="password" class="input-glass">
+            </div>
+            <div>
+              <label class="label-glass">Rol</label>
+              <select formControlName="role" class="input-glass">
+                <option value="ADMIN">Administrador</option>
+                <option value="EDITOR">Editor</option>
+              </select>
+            </div>
+            <div class="flex gap-3 justify-end">
+              <button type="button" (click)="showUserForm.set(false)" class="btn-secondary text-sm">Cancelar</button>
+              <button type="submit" [disabled]="userForm.invalid" class="btn-primary text-sm disabled:opacity-50">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- === AUDITORÍA === -->
+  @if (activeTab() === 'audit') {
+    <div class="glass p-6">
+      <h2 class="text-lg font-semibold mb-4">Log de Auditoría Global</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-white/50 border-b border-white/10">
+              <th class="pb-3 pr-4">Fecha</th>
+              <th class="pb-3 pr-4">Usuario</th>
+              <th class="pb-3 pr-4">Acción</th>
+              <th class="pb-3 pr-4">Entidad</th>
+              <th class="pb-3">Detalles</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of auditLogs(); track log.id) {
+              <tr class="border-b border-white/5">
+                <td class="py-2 pr-4 text-white/40 text-xs">{{ log.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+                <td class="py-2 pr-4">{{ log.user?.name }}</td>
+                <td class="py-2 pr-4 text-primary-400">{{ log.action }}</td>
+                <td class="py-2 pr-4">{{ log.entity }}</td>
+                <td class="py-2 text-white/40 text-xs">{{ log.details | json }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="py-8 text-center text-white/30">Sin registros</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>

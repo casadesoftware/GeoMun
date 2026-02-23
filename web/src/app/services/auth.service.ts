@@ -5,7 +5,8 @@ interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'EDITOR';
+  role: 'SUPERADMIN' | 'ADMIN' | 'EDITOR';
+  tenantId: string | null;
 }
 
 interface LoginResponse {
@@ -22,6 +23,7 @@ export class AuthService {
   user = this._user.asReadonly();
   isAuthenticated = computed(() => !!this._token());
   role = computed(() => this._user()?.role ?? null);
+  tenantId = computed(() => this._user()?.tenantId ?? null);
 
   constructor(private http: HttpClient) {}
 

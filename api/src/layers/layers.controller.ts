@@ -39,8 +39,8 @@ export class LayersController {
 
   @Delete(':id')
   @Roles('ADMIN', 'EDITOR')
-  remove(@Param('id') id: string) {
-    return this.layersService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.layersService.remove(id, userId);
   }
 
   // === Features ===

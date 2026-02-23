@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { MapsService } from './maps.service';
 import { CreateMapDto } from './dto/create-map.dto';
 import { UpdateMapDto } from './dto/update-map.dto';
@@ -32,35 +32,35 @@ export class MapsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'EDITOR')
-  create(@Body() dto: CreateMapDto, @CurrentUser('id') userId: string) {
-    return this.mapsService.create(dto, userId);
+  @Roles('SUPERADMIN', 'ADMIN', 'EDITOR')
+  create(@Body() dto: CreateMapDto, @CurrentUser() user: any) {
+    return this.mapsService.create(dto, user.id, user.tenantId);
   }
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'EDITOR')
-  findAll() {
-    return this.mapsService.findAll();
+  @Roles('SUPERADMIN', 'ADMIN', 'EDITOR')
+  findAll(@CurrentUser() user: any) {
+    return this.mapsService.findAll(user.tenantId, user.role);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'EDITOR')
+  @Roles('SUPERADMIN', 'ADMIN', 'EDITOR')
   findOne(@Param('id') id: string) {
     return this.mapsService.findOne(id);
   }
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'EDITOR')
-  update(@Param('id') id: string, @Body() dto: UpdateMapDto, @CurrentUser('role') role: string) {
-    return this.mapsService.update(id, dto, role);
+  @Roles('SUPERADMIN', 'ADMIN', 'EDITOR')
+  update(@Param('id') id: string, @Body() dto: UpdateMapDto, @CurrentUser() user: any) {
+    return this.mapsService.update(id, dto, user.role, user.id);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('SUPERADMIN', 'ADMIN')
   remove(@Param('id') id: string) {
     return this.mapsService.remove(id);
   }

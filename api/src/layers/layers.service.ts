@@ -3,17 +3,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateLayerDto } from './dto/create-layer.dto';
 import { UpdateLayerDto } from './dto/update-layer.dto';
 import { CreateFeatureDto, UpdateFeatureDto } from './dto/feature.dto';
+import { AuditService } from '../audit/audit.service';
+
 
 @Injectable()
 export class LayersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private audit: AuditService) {}
 
   // === Capas ===
 
   async create(dto: CreateLayerDto, userId: string) {
-    return this.prisma.layer.create({
+    const layer = await this.prisma.layer.create({
       data: { ...dto, createdBy: userId },
     });
+    await this.audit.log(userId, 'CREATE', 'Layer', layer.id, { name: layer.name });
+    return layer;
   }
 
   async findByMap(mapId: string) {
@@ -41,12 +45,16 @@ export class LayersService {
       throw new ForbiddenException('Solo ADMIN puede cambiar la visibilidad');
     }
 
-    return this.prisma.layer.update({ where: { id }, data: dto });
+    const updated = await this.prisma.layer.update({ where: { id }, data: dto });
+    await this.audit.log(id, 'UPDATE', 'Layer', id, { changes: Object.keys(dto) });
+    return updated;
+    
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: string) {
     const layer = await this.prisma.layer.findUnique({ where: { id } });
     if (!layer) throw new NotFoundException('Capa no encontrada');
+    await this.audit.log(userId, 'DELETE', 'Layer', id, { name: layer.name });
     await this.prisma.layer.delete({ where: { id } });
     return { message: 'Capa eliminada' };
   }

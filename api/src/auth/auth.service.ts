@@ -18,15 +18,24 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.password);
     if (!valid) throw new UnauthorizedException('Credenciales inválidas');
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = { sub: user.id, role: user.role, tenantId: user.tenantId };
     return {
       token: this.jwt.sign(payload),
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
     };
   }
 
   async profile(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { tenant: { select: { name: true, slug: true } } },
+    });
     if (!user) throw new UnauthorizedException();
     const { password, ...result } = user;
     return result;

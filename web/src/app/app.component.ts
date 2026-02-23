@@ -5,11 +5,12 @@ import { LoginComponent } from './components/login/login.component';
 import { AdminComponent } from './components/admin/admin.component';
 import { EditorComponent } from './components/editor/editor.component';
 import { PublicMapComponent } from './components/public-map/public-map.component';
+import { SuperadminComponent } from './components/superadmin/superadmin.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, LoginComponent, AdminComponent, EditorComponent, PublicMapComponent],
+  imports: [CommonModule, LoginComponent, AdminComponent, EditorComponent, PublicMapComponent, SuperadminComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent {
