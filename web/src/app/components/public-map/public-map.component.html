@@ -1,0 +1,75 @@
+<div class="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-primary-900/20">
+  <!-- Header -->
+  <nav class="glass-dark px-6 py-3 flex items-center justify-between rounded-none border-b border-white/10">
+    <a href="/" class="text-xl font-bold text-primary-400">GeoMun</a>
+    <span class="text-sm text-white/40">Información Geográfica Pública</span>
+  </nav>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center h-64">
+      <span class="text-white/40">Cargando...</span>
+    </div>
+  } @else if (error()) {
+    <div class="flex items-center justify-center h-64">
+      <div class="glass p-8 text-center">
+        <p class="text-red-400 text-lg">{{ error() }}</p>
+        <a href="/" class="text-primary-400 text-sm mt-2 inline-block hover:text-primary-300">Volver al inicio</a>
+      </div>
+    </div>
+  } @else if (map()) {
+    <!-- Vista de mapa individual con MapLibre -->
+    <div class="flex h-[calc(100vh-57px)]">
+      <!-- Panel lateral de capas -->
+      <div class="w-72 glass-dark p-4 overflow-y-auto border-r border-white/10 rounded-none shrink-0">
+        <a href="/" class="text-sm text-primary-400 hover:text-primary-300 mb-4 inline-block">← Todos los mapas</a>
+        <h1 class="text-lg font-bold mb-1">{{ map().name }}</h1>
+        <p class="text-white/40 text-xs mb-4">{{ map().theme }}</p>
+
+        <p class="text-xs text-white/50 uppercase tracking-wider mb-2">Capas</p>
+        @for (layer of map().layers; track layer.id) {
+          <div class="flex items-center gap-2 py-2 px-2 rounded hover:bg-white/5 cursor-pointer" (click)="toggleLayer(layer.id)">
+            <div class="w-3 h-3 rounded-full shrink-0" [style.background-color]="layer.style?.color || '#3b82f6'"
+                 [style.opacity]="layerVisibility()[layer.id] ? '1' : '0.3'"></div>
+            <span class="text-sm" [class]="layerVisibility()[layer.id] ? 'text-white' : 'text-white/30'">{{ layer.name }}</span>
+            <span class="text-xs text-white/20 ml-auto">{{ layer.features?.length || 0 }}</span>
+          </div>
+        } @empty {
+          <p class="text-white/20 text-sm">Sin capas públicas</p>
+        }
+      </div>
+
+      <!-- Mapa -->
+      <div class="flex-1">
+        <div #publicMapContainer class="w-full h-full"></div>
+      </div>
+    </div>
+  } @else {
+    <!-- Catálogo de mapas públicos -->
+    <div class="p-6">
+      <h1 class="text-2xl font-bold mb-6">Mapas Públicos</h1>
+
+      @if (themes().length > 0) {
+        <div class="flex gap-2 mb-6 flex-wrap">
+          @for (theme of themes(); track theme) {
+            <button (click)="filterByTheme(theme)"
+                    [class]="selectedTheme() === theme ? 'btn-primary' : 'btn-secondary'"
+                    class="text-sm">
+              {{ theme }}
+            </button>
+          }
+        </div>
+      }
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (m of filteredMaps(); track m.id) {
+          <div class="glass p-5 cursor-pointer hover:border-primary-500/50 transition-all" (click)="openMap(m.slug)">
+            <h3 class="font-semibold mb-1">{{ m.name }}</h3>
+            <p class="text-xs text-white/40">{{ m.theme }} · {{ m._count?.layers || 0 }} capas</p>
+          </div>
+        } @empty {
+          <div class="col-span-full glass p-8 text-center text-white/30">No hay mapas públicos disponibles</div>
+        }
+      </div>
+    </div>
+  }
+</div>

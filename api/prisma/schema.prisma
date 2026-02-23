@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(EDITOR)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  auditLogs AuditLog[]
+  layers    Layer[]
+  maps      Map[]
+
+  @@map("users")
+}
+
+model Map {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  slug      String   @unique
+  isPublic  Boolean  @default(false) @map("is_public")
+  theme     String?
+  config    Json?
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  creator User    @relation(fields: [createdBy], references: [id])
+  layers  Layer[]
+
+  @@map("maps")
+}
+
+model Layer {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  isPublic   Boolean  @default(false) @map("is_public")
+  mapId      String   @map("map_id") @db.Uuid
+  style      Json?
+  fields     Json?
+  createdBy  String   @map("created_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  map      Map       @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  creator  User      @relation(fields: [createdBy], references: [id])
+  features Feature[]
+
+  @@map("layers")
+}
+
+model Feature {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  layerId    String   @map("layer_id") @db.Uuid
+  name       String
+  geomType   String   @map("geom_type")
+  geometry   Json
+  properties Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  layer Layer @relation(fields: [layerId], references: [id], onDelete: Cascade)
+
+  @@map("features")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

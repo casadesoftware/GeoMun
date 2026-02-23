@@ -1,0 +1,28 @@
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-900 via-dark-800 to-primary-900/30">
+  <div class="glass p-8 w-full max-w-md">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-white mb-2">GeoMun</h1>
+      <p class="text-white/50 text-sm">Sistema de Información Geográfica</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+      <div>
+        <label class="label-glass">Correo electrónico</label>
+        <input type="email" formControlName="email" class="input-glass" placeholder="admin@geomun.local" autocomplete="email">
+      </div>
+
+      <div>
+        <label class="label-glass">Contraseña</label>
+        <input type="password" formControlName="password" class="input-glass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button type="submit" [disabled]="form.invalid || loading()" class="btn-primary w-full py-3 text-center disabled:opacity-50">
+        @if (loading()) {
+          <span>Ingresando...</span>
+        } @else {
+          <span>Iniciar sesión</span>
+        }
+      </button>
+    </form>
+  </div>
+</div>

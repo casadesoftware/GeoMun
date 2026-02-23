@@ -1,0 +1,168 @@
+<div class="p-6">
+  <!-- Tabs -->
+  <div class="flex gap-2 mb-6">
+    <button (click)="switchTab('users')" [class]="activeTab() === 'users' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Usuarios</button>
+    <button (click)="switchTab('maps')" [class]="activeTab() === 'maps' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Mapas y Capas</button>
+    <button (click)="switchTab('audit')" [class]="activeTab() === 'audit' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Auditoría</button>
+  </div>
+
+  <!-- === USUARIOS === -->
+  @if (activeTab() === 'users') {
+    <div class="glass p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Gestión de Usuarios</h2>
+        <button (click)="openUserForm()" class="btn-primary text-sm">+ Nuevo usuario</button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-white/50 border-b border-white/10">
+              <th class="pb-3 pr-4">Nombre</th>
+              <th class="pb-3 pr-4">Email</th>
+              <th class="pb-3 pr-4">Rol</th>
+              <th class="pb-3 pr-4">Estado</th>
+              <th class="pb-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr class="border-b border-white/5 hover:bg-white/5">
+                <td class="py-3 pr-4">{{ user.name }}</td>
+                <td class="py-3 pr-4 text-white/60">{{ user.email }}</td>
+                <td class="py-3 pr-4">
+                  <span [class]="user.role === 'ADMIN' ? 'text-amber-400' : 'text-primary-400'" class="text-xs font-medium uppercase">{{ user.role }}</span>
+                </td>
+                <td class="py-3 pr-4">
+                  <span [class]="user.active ? 'text-green-400' : 'text-red-400'" class="text-xs">{{ user.active ? 'Activo' : 'Inactivo' }}</span>
+                </td>
+                <td class="py-3">
+                  <div class="flex gap-2">
+                    <button (click)="openUserForm(user)" class="text-xs text-primary-400 hover:text-primary-300">Editar</button>
+                    <button (click)="deleteUser(user)" class="text-xs text-red-400 hover:text-red-300">Eliminar</button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="py-8 text-center text-white/30">Sin usuarios</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal User Form -->
+    @if (showUserForm()) {
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" (click)="closeUserForm()">
+        <div class="glass p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-semibold mb-4">{{ editingUser() ? 'Editar' : 'Nuevo' }} Usuario</h3>
+          <form [formGroup]="userForm" (ngSubmit)="saveUser()" class="space-y-4">
+            <div>
+              <label class="label-glass">Nombre</label>
+              <input formControlName="name" class="input-glass">
+            </div>
+            <div>
+              <label class="label-glass">Email</label>
+              <input type="email" formControlName="email" class="input-glass">
+            </div>
+            <div>
+              <label class="label-glass">Contraseña {{ editingUser() ? '(dejar vacío para no cambiar)' : '' }}</label>
+              <input type="password" formControlName="password" class="input-glass">
+            </div>
+            <div>
+              <label class="label-glass">Rol</label>
+              <select formControlName="role" class="input-glass">
+                <option value="EDITOR">Editor</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+            </div>
+            <div class="flex gap-3 justify-end pt-2">
+              <button type="button" (click)="closeUserForm()" class="btn-secondary text-sm">Cancelar</button>
+              <button type="submit" [disabled]="userForm.invalid" class="btn-primary text-sm disabled:opacity-50">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- === MAPAS Y CAPAS === -->
+  @if (activeTab() === 'maps') {
+    <div class="space-y-4">
+      @for (map of maps(); track map.id) {
+        <div class="glass p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-semibold">{{ map.name }}</h3>
+              <span class="text-xs text-white/40">{{ map.theme || 'Sin tema' }} · {{ map._count?.layers || 0 }} capas</span>
+            </div>
+            <div class="flex items-center gap-3">
+              @if (map.isPublic) {
+                <span class="text-xs text-green-400">Público</span>
+                <span class="text-xs text-white/30">/mapa/{{ map.slug }}</span>
+              } @else {
+                <span class="text-xs text-white/30">Privado</span>
+              }
+              <button (click)="toggleMapPublic(map)" [class]="map.isPublic ? 'btn-danger' : 'btn-primary'" class="text-xs py-1">
+                {{ map.isPublic ? 'Hacer privado' : 'Hacer público' }}
+              </button>
+            </div>
+          </div>
+
+          @if (map.layers && map.layers.length > 0) {
+            <div class="mt-3 pl-4 border-l border-white/10 space-y-2">
+              @for (layer of map.layers; track layer.id) {
+                <div class="flex items-center justify-between py-1">
+                  <span class="text-sm text-white/70">{{ layer.name }}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs" [class]="layer.isPublic ? 'text-green-400' : 'text-white/30'">
+                      {{ layer.isPublic ? 'Pública' : 'Privada' }}
+                    </span>
+                    <button (click)="toggleLayerPublic(layer)" class="text-xs text-primary-400 hover:text-primary-300">
+                      {{ layer.isPublic ? 'Ocultar' : 'Publicar' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @empty {
+        <div class="glass p-8 text-center text-white/30">No hay mapas creados</div>
+      }
+    </div>
+  }
+
+  <!-- === AUDITORÍA === -->
+  @if (activeTab() === 'audit') {
+    <div class="glass p-6">
+      <h2 class="text-lg font-semibold mb-4">Log de Auditoría</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-white/50 border-b border-white/10">
+              <th class="pb-3 pr-4">Fecha</th>
+              <th class="pb-3 pr-4">Usuario</th>
+              <th class="pb-3 pr-4">Acción</th>
+              <th class="pb-3 pr-4">Entidad</th>
+              <th class="pb-3">Detalles</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of auditLogs(); track log.id) {
+              <tr class="border-b border-white/5">
+                <td class="py-2 pr-4 text-white/40 text-xs">{{ log.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+                <td class="py-2 pr-4">{{ log.user?.name }}</td>
+                <td class="py-2 pr-4 text-primary-400">{{ log.action }}</td>
+                <td class="py-2 pr-4">{{ log.entity }}</td>
+                <td class="py-2 text-white/40 text-xs">{{ log.details | json }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="py-8 text-center text-white/30">Sin registros</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>

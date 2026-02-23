@@ -1,0 +1,214 @@
+<div class="p-6">
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-white/50 mb-4">
+    <button (click)="backToMaps()" class="hover:text-white">Mapas</button>
+    @if (selectedMap()) {
+      <span>/</span>
+      <button (click)="backToLayers()" class="hover:text-white">{{ selectedMap().name }}</button>
+    }
+    @if (selectedLayer()) {
+      <span>/</span>
+      <span class="text-white">{{ selectedLayer().name }}</span>
+    }
+  </div>
+
+  <!-- === MAPAS === -->
+  @if (activeTab() === 'maps') {
+    <div class="glass p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Mis Mapas</h2>
+        <button (click)="openMapForm()" class="btn-primary text-sm">+ Nuevo mapa</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (map of maps(); track map.id) {
+          <div class="glass-dark p-4 cursor-pointer hover:border-primary-500/50 transition-all" (click)="selectMap(map)">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-medium">{{ map.name }}</h3>
+              <span class="text-xs px-2 py-0.5 rounded" [class]="map.isPublic ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'">
+                {{ map.isPublic ? 'Público' : 'Privado' }}
+              </span>
+            </div>
+            <p class="text-xs text-white/40">{{ map.theme || 'Sin tema' }} · {{ map._count?.layers || 0 }} capas</p>
+            <div class="flex gap-2 mt-3" (click)="$event.stopPropagation()">
+              <button (click)="openMapForm(map)" class="text-xs text-primary-400 hover:text-primary-300">Editar</button>
+              <button (click)="deleteMap(map)" class="text-xs text-red-400 hover:text-red-300">Eliminar</button>
+            </div>
+          </div>
+        } @empty {
+          <div class="col-span-full text-center text-white/30 py-8">No hay mapas. Crea uno para comenzar.</div>
+        }
+      </div>
+    </div>
+
+    @if (showMapForm()) {
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" (click)="showMapForm.set(false)">
+        <div class="glass p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-semibold mb-4">{{ editingMap() ? 'Editar' : 'Nuevo' }} Mapa</h3>
+          <form [formGroup]="mapForm" (ngSubmit)="saveMap()" class="space-y-4">
+            <div>
+              <label class="label-glass">Nombre</label>
+              <input formControlName="name" class="input-glass" placeholder="Ej: Turismo Municipal">
+            </div>
+            <div>
+              <label class="label-glass">Tema</label>
+              <input formControlName="theme" class="input-glass" placeholder="Ej: TURISMO, SEGURIDAD, INFRAESTRUCTURA">
+            </div>
+            <div class="flex gap-3 justify-end">
+              <button type="button" (click)="showMapForm.set(false)" class="btn-secondary text-sm">Cancelar</button>
+              <button type="submit" class="btn-primary text-sm">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- === CAPAS === -->
+  @if (activeTab() === 'layers') {
+    <div class="glass p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Capas de "{{ selectedMap()?.name }}"</h2>
+        <button (click)="openLayerForm()" class="btn-primary text-sm">+ Nueva capa</button>
+      </div>
+
+      <div class="space-y-3">
+        @for (layer of layers(); track layer.id) {
+          <div class="glass-dark p-4 flex items-center justify-between cursor-pointer hover:border-primary-500/50 transition-all" (click)="selectLayer(layer)">
+            <div class="flex items-center gap-3">
+              <div class="w-4 h-4 rounded" [style.background-color]="layer.style?.color || '#3b82f6'"></div>
+              <div>
+                <span class="font-medium">{{ layer.name }}</span>
+                <span class="text-xs text-white/40 ml-2">{{ layer._count?.features || 0 }} elementos</span>
+              </div>
+            </div>
+            <div class="flex gap-2" (click)="$event.stopPropagation()">
+              <button (click)="openLayerForm(layer)" class="text-xs text-primary-400">Editar</button>
+              <button (click)="deleteLayer(layer)" class="text-xs text-red-400">Eliminar</button>
+            </div>
+          </div>
+        } @empty {
+          <div class="text-center text-white/30 py-8">Sin capas. Crea una para comenzar.</div>
+        }
+      </div>
+    </div>
+
+    <!-- Layer Form Modal -->
+    @if (showLayerForm()) {
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" (keydown.escape)="showLayerForm.set(false)" (click)="showLayerForm.set(false)">
+        <div class="glass p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+          <h3 class="text-lg font-semibold mb-4">{{ editingLayer() ? 'Editar' : 'Nueva' }} Capa</h3>
+          <form [formGroup]="layerForm" (ngSubmit)="saveLayer()" class="space-y-4">
+            <div>
+              <label class="label-glass">Nombre de la capa</label>
+              <input formControlName="name" class="input-glass">
+            </div>
+
+            <div formGroupName="style" class="space-y-3">
+              <p class="text-sm font-medium text-white/60">Estilo</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="label-glass">Color</label>
+                  <input type="color" formControlName="color" class="w-full h-10 rounded cursor-pointer bg-transparent border border-white/20">
+                </div>
+                <div>
+                  <label class="label-glass">Ícono</label>
+                  <select formControlName="icon" class="input-glass">
+                    <option value="marker">Marcador</option>
+                    <option value="circle">Círculo</option>
+                    <option value="square">Cuadrado</option>
+                    <option value="star">Estrella</option>
+                    <option value="flag">Bandera</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div formArrayName="fields">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-sm font-medium text-white/60">Campos de datos</p>
+                <button type="button" (click)="addField()" class="text-xs text-primary-400 hover:text-primary-300">+ Agregar campo</button>
+              </div>
+              @for (field of fieldsArray.controls; track field; let i = $index) {
+                <div class="flex gap-2 items-end mb-2" [formGroupName]="i">
+                  <div class="flex-1">
+                    <input formControlName="name" class="input-glass text-sm" placeholder="Nombre del campo">
+                  </div>
+                  <div class="w-28">
+                    <select formControlName="type" class="input-glass text-sm">
+                      <option value="text">Texto</option>
+                      <option value="number">Número</option>
+                      <option value="date">Fecha</option>
+                      <option value="boolean">Sí/No</option>
+                    </select>
+                  </div>
+                  <div class="w-20">
+                    <input type="number" formControlName="length" class="input-glass text-sm" placeholder="Long.">
+                  </div>
+                  <button type="button" (click)="removeField(i)" class="text-red-400 hover:text-red-300 text-sm pb-2">✕</button>
+                </div>
+              }
+            </div>
+
+            <div class="flex gap-3 justify-end pt-2">
+              <button type="button" (click)="showLayerForm.set(false)" class="btn-secondary text-sm">Cancelar</button>
+              <button type="submit" class="btn-primary text-sm">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- === FEATURES + MAPA === -->
+  @if (activeTab() === 'features') {
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Panel izquierdo: lista + herramientas -->
+      <div class="lg:col-span-1 space-y-4">
+        <!-- Herramientas de dibujo -->
+        <div class="glass p-4">
+          <p class="text-sm font-medium text-white/60 mb-3">Herramientas de dibujo</p>
+          <div class="flex flex-wrap gap-2">
+            <button (click)="startDraw('Point')" class="text-sm" [class]="drawMode() === 'Point' ? 'btn-primary' : 'btn-secondary'">📍 Punto</button>
+            <button (click)="startDraw('LineString')" class="text-sm" [class]="drawMode() === 'LineString' ? 'btn-primary' : 'btn-secondary'">📏 Línea</button>
+            <button (click)="startDraw('Polygon')" class="text-sm" [class]="drawMode() === 'Polygon' ? 'btn-primary' : 'btn-secondary'">⬡ Polígono</button>
+          </div>
+          @if (drawMode() !== 'none') {
+            <div class="mt-3 flex gap-2">
+              @if (drawMode() !== 'Point') {
+                <button (click)="finishDraw()" class="btn-primary text-xs">✓ Finalizar</button>
+              }
+              <button (click)="cancelDraw()" class="btn-danger text-xs">✕ Cancelar</button>
+              <span class="text-xs text-white/40 self-center">Haz clic en el mapa</span>
+            </div>
+          }
+        </div>
+
+        <!-- Lista de features -->
+        <div class="glass p-4">
+          <p class="text-sm font-medium text-white/60 mb-3">Elementos ({{ features().length }})</p>
+          <div class="space-y-2 max-h-64 overflow-y-auto">
+            @for (feat of features(); track feat.id) {
+              <div class="flex items-center justify-between py-1.5 px-2 rounded bg-white/5 hover:bg-white/10">
+                <div>
+                  <span class="text-sm">{{ feat.name }}</span>
+                  <span class="text-xs text-primary-400 ml-2">{{ feat.geomType }}</span>
+                </div>
+                <button (click)="deleteFeature(feat)" class="text-xs text-red-400 hover:text-red-300">✕</button>
+              </div>
+            } @empty {
+              <p class="text-white/30 text-sm text-center py-4">Sin elementos. Usa las herramientas para dibujar.</p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Mapa -->
+      <div class="lg:col-span-2">
+        <div class="glass p-2 h-[600px]">
+          <div #mapContainer class="w-full h-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

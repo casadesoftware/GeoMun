@@ -1,0 +1,30 @@
+@if (view() === 'public') {
+  <app-public-map [slug]="publicSlug()" />
+} @else if (view() === 'login') {
+  <app-login />
+} @else {
+  <div class="min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="glass-dark px-6 py-3 flex items-center justify-between border-b border-white/10 rounded-none">
+      <div class="flex items-center gap-3">
+        <span class="text-xl font-bold text-primary-400">GeoMun</span>
+        <span class="text-xs px-2 py-0.5 rounded bg-primary-600/30 text-primary-300 uppercase tracking-wider">
+          {{ auth.role() }}
+        </span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-sm text-white/60">{{ auth.user()?.name }}</span>
+        <button (click)="logout()" class="btn-secondary text-sm py-1.5">Cerrar sesión</button>
+      </div>
+    </nav>
+
+    <!-- Vista por rol -->
+    <main class="flex-1">
+      @if (view() === 'ADMIN') {
+        <app-admin />
+      } @else if (view() === 'EDITOR') {
+        <app-editor />
+      }
+    </main>
+  </div>
+}
