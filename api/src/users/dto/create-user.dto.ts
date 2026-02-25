@@ -15,4 +15,8 @@ export class CreateUserDto {
   @IsEnum(['ADMIN', 'EDITOR'])
   @IsOptional()
   role?: 'ADMIN' | 'EDITOR';
+
+  @IsString()
+  @IsOptional()
+  tenantId?: string;
 }

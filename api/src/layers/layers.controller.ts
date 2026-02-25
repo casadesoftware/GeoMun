@@ -33,8 +33,8 @@ export class LayersController {
 
   @Put(':id')
   @Roles('ADMIN', 'EDITOR')
-  update(@Param('id') id: string, @Body() dto: UpdateLayerDto, @CurrentUser('role') role: string) {
-    return this.layersService.update(id, dto, role);
+  update(@Param('id') id: string, @Body() dto: UpdateLayerDto, @CurrentUser() user: any) {
+   return this.layersService.update(id, dto, user.role, user.id);
   }
 
   @Delete(':id')

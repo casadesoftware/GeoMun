@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './superadmin.component.html',
 })
+
 export class SuperadminComponent implements OnInit {
   activeTab = signal<'tenants' | 'users' | 'audit'>('tenants');
 
@@ -116,16 +117,6 @@ export class SuperadminComponent implements OnInit {
     });
   }
 
-  deleteUser(user: any) {
-    Swal.fire({
-      title: '¿Desactivar usuario?', text: user.name, icon: 'warning',
-      showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Desactivar', cancelButtonText: 'Cancelar',
-      background: '#1e293b', color: '#fff',
-    }).then((r) => {
-      if (r.isConfirmed) this.api.delete(`users/${user.id}`).subscribe({ next: () => this.loadUsers() });
-    });
-  }
-
   // === Audit ===
   loadAudit() {
     this.api.get<any>('audit').subscribe({ next: (d) => this.auditLogs.set(d.data || []) });
@@ -141,4 +132,19 @@ export class SuperadminComponent implements OnInit {
     const t = this.tenants().find((t: any) => t.id === tenantId);
     return t?.name || 'Desconocido';
   }
+
+  toggleUserActive(user: any) {
+    const action = user.active ? 'Desactivar' : 'Activar';
+    Swal.fire({
+      title: `¿${action} usuario?`, text: user.name, icon: 'warning',
+      showCancelButton: true, confirmButtonColor: user.active ? '#ef4444' : '#22c55e',
+      confirmButtonText: action, cancelButtonText: 'Cancelar',
+      background: '#1e293b', color: '#fff',
+    }).then((r) => {
+      if (r.isConfirmed) {
+        this.api.put(`users/${user.id}`, { active: !user.active }).subscribe({ next: () => this.loadUsers() });
+      }
+    });
+  }
+
 }

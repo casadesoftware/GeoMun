@@ -15,7 +15,8 @@ export class UsersController {
 
   @Post()
   create(@Body() dto: CreateUserDto, @CurrentUser() user: any) {
-    return this.usersService.create(dto, user.tenantId);
+    const tenantId = user.role === 'SUPERADMIN' && dto.tenantId ? dto.tenantId : user.tenantId;
+    return this.usersService.create(dto, tenantId);
   }
 
   @Get()

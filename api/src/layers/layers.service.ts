@@ -37,7 +37,7 @@ export class LayersService {
     return layer;
   }
 
-  async update(id: string, dto: UpdateLayerDto, userRole: string) {
+  async update(id: string, dto: UpdateLayerDto, userRole: string, userId: string) {
     const layer = await this.prisma.layer.findUnique({ where: { id } });
     if (!layer) throw new NotFoundException('Capa no encontrada');
 
@@ -46,7 +46,7 @@ export class LayersService {
     }
 
     const updated = await this.prisma.layer.update({ where: { id }, data: dto });
-    await this.audit.log(id, 'UPDATE', 'Layer', id, { changes: Object.keys(dto) });
+    await this.audit.log(userId, 'UPDATE', 'Layer', id, { changes: Object.keys(dto) });
     return updated;
     
   }

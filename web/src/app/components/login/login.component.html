@@ -1,14 +1,16 @@
-<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-900 via-dark-800 to-primary-900/30">
-  <div class="glass p-8 w-full max-w-md">
+<div class="min-h-screen flex items-center justify-center relative overflow-hidden">
+  <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover z-0"></video>
+  <div class="absolute inset-0 bg-black/60 z-0"></div>
+  <div class="glass p-8 w-full max-w-md relative z-10">
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-white mb-2">GeoMun</h1>
-      <p class="text-white/50 text-sm">Sistema de Información Geográfica</p>
+      <h1 class="text-3xl font-bold text-white mb-2">PixelMap</h1>
+      <p class="text-white/50 text-sm">Sistema de Gestión de Mapas</p>
     </div>
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
       <div>
         <label class="label-glass">Correo electrónico</label>
-        <input type="email" formControlName="email" class="input-glass" placeholder="admin@geomun.local" autocomplete="email">
+        <input type="email" formControlName="email" class="input-glass" placeholder="usuario@correo.com" autocomplete="email">
       </div>
 
       <div>

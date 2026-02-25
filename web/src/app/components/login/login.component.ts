@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -11,7 +11,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.component.html',
 })
-export class LoginComponent {
+export class LoginComponent implements AfterViewInit {
   form: FormGroup;
   loading = signal(false);
 
@@ -42,4 +42,15 @@ export class LoginComponent {
       },
     });
   }
+
+  ngAfterViewInit() {
+    const video = document.querySelector('video');
+       if (video) {
+         video.src = 'assets/video.mp4';
+         video.loop = true;
+         video.muted = true;
+         video.play().catch(() => {});
+       }
+}
+
 }
