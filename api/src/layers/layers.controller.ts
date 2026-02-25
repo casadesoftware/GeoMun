@@ -7,6 +7,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { PlanLimit } from '../auth/decorators/plan-limit.decorator';
 
 @Controller('layers')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,6 +16,8 @@ export class LayersController {
   constructor(private layersService: LayersService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard, PlanGuard)
+  @PlanLimit('layers')
   @Roles('ADMIN', 'EDITOR')
   create(@Body() dto: CreateLayerDto, @CurrentUser('id') userId: string) {
     return this.layersService.create(dto, userId);

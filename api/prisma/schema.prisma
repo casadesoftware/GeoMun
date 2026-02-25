@@ -13,12 +13,26 @@ enum Role {
   EDITOR
 }
 
+enum Plan {
+  FREE
+  BASIC
+  PRO
+}
+
 model Tenant {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
   slug      String   @unique
   active    Boolean  @default(true)
   config    Json?
+  plan      Plan     @default(FREE)
+  maxUsers  Int      @default(2)  @map("max_users")
+  maxMaps   Int      @default(1)  @map("max_maps")
+  maxLayers Int      @default(3)  @map("max_layers")
+  stripeCustomerId   String? @map("stripe_customer_id")
+  stripeSubscriptionId String? @map("stripe_subscription_id")
+  planExpiresAt DateTime? @map("plan_expires_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

@@ -13,7 +13,7 @@ import QRCode from 'qrcode';
   templateUrl: './admin.component.html',
 })
 export class AdminComponent implements OnInit {
-  activeTab = signal<'users' | 'maps' | 'audit'>('users');
+  activeTab = signal<'users' | 'maps' | 'audit' | 'billing'>('users');
 
   // Users
   users = signal<any[]>([]);
@@ -26,6 +26,9 @@ export class AdminComponent implements OnInit {
 
   // Audit
   auditLogs = signal<any[]>([]);
+
+  // Billing
+  billingStatus = signal<any>(null);
 
   constructor(
     private fb: FormBuilder,
@@ -128,11 +131,6 @@ export class AdminComponent implements OnInit {
     this.api.get<any>('audit').subscribe({ next: (d) => this.auditLogs.set(d.data || []) });
   }
 
-  switchTab(tab: 'users' | 'maps' | 'audit') {
-    this.activeTab.set(tab);
-    if (tab === 'audit') this.loadAudit();
-  }
-
   async showQR(map: any) {
     const url = `${window.location.origin}/mapa/${map.slug}`;
     const dataUrl = await QRCode.toDataURL(url, { width: 300, margin: 2 });
@@ -144,6 +142,35 @@ export class AdminComponent implements OnInit {
       showConfirmButton: false,
       showCloseButton: true,
     });
+  }
+
+  loadBilling() {
+    this.api.get<any>('billing/status').subscribe({ next: (d) => this.billingStatus.set(d) });
+  }
+
+  upgrade(plan: 'BASIC' | 'PRO') {
+    this.api.post<any>('billing/checkout', { plan }).subscribe({
+      next: (res) => { window.location.href = res.url; },
+      error: (e: any) => Swal.fire({ icon: 'error', title: 'Error', text: e.error?.message, background: '#1e293b', color: '#fff' }),
+    });
+  }
+
+  openPortal() {
+    this.api.post<any>('billing/portal', {}).subscribe({
+      next: (res) => { window.location.href = res.url; },
+      error: (e: any) => Swal.fire({ icon: 'error', title: 'Error', text: e.error?.message, background: '#1e293b', color: '#fff' }),
+    });
+  }
+
+  usagePercent(used: number, max: number): number {
+    if (max === -1) return 0;
+    return Math.round((used / max) * 100);
+  }
+
+  switchTab(tab: 'users' | 'maps' | 'audit' | 'billing') {
+    this.activeTab.set(tab);
+    if (tab === 'audit') this.loadAudit();
+    if (tab === 'billing') this.loadBilling();
   }
 
 }

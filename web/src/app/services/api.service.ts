@@ -30,4 +30,11 @@ export class ApiService {
   getPublic<T>(url: string) {
     return this.http.get<T>(`/api/${url}`);
   }
+
+  postFormData<T>(url: string, formData: FormData) {
+    return this.http.post<T>(`/api/${url}`, formData, {
+      headers: this.auth.getAuthHeaders(),
+    });
+  }
+
 }

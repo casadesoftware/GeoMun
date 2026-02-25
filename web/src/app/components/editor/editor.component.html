@@ -111,14 +111,12 @@
                   <label class="label-glass">Color</label>
                   <input type="color" formControlName="color" class="w-full h-10 rounded cursor-pointer bg-transparent border border-white/20">
                 </div>
-                <div>
-                  <label class="label-glass">Ícono</label>
-                  <select formControlName="icon" class="input-glass">
-                    <option value="marker">Marcador</option>
-                    <option value="circle">Círculo</option>
-                    <option value="square">Cuadrado</option>
-                    <option value="star">Estrella</option>
-                    <option value="flag">Bandera</option>
+                 <div>
+                  <label class="label-glass">Geometría</label>
+                  <select formControlName="geomType" class="input-glass">
+                    <option value="Point">Punto</option>
+                    <option value="LineString">Línea</option>
+                    <option value="Polygon">Polígono</option>
                   </select>
                 </div>
               </div>
@@ -168,11 +166,20 @@
         <!-- Herramientas de dibujo -->
         <div class="glass p-4">
           <p class="text-sm font-medium text-white/60 mb-3">Herramientas de dibujo</p>
-          <div class="flex flex-wrap gap-2">
-            <button (click)="startDraw('Point')" class="text-sm" [class]="drawMode() === 'Point' ? 'btn-primary' : 'btn-secondary'">📍 Punto</button>
-            <button (click)="startDraw('LineString')" class="text-sm" [class]="drawMode() === 'LineString' ? 'btn-primary' : 'btn-secondary'">📏 Línea</button>
-            <button (click)="startDraw('Polygon')" class="text-sm" [class]="drawMode() === 'Polygon' ? 'btn-primary' : 'btn-secondary'">⬡ Polígono</button>
-          </div>
+            <div class="flex flex-wrap gap-2">
+              @if (selectedLayer()?.style?.geomType === 'Point') {
+                <button (click)="startDraw('Point')" class="text-sm" [class]="drawMode() === 'Point' ? 'btn-primary' : 'btn-secondary'">📍 Punto</button>
+              }
+              @if (selectedLayer()?.style?.geomType === 'LineString') {
+                <button (click)="startDraw('LineString')" class="text-sm" [class]="drawMode() === 'LineString' ? 'btn-primary' : 'btn-secondary'">📏 Línea</button>
+              }
+              @if (selectedLayer()?.style?.geomType === 'Polygon') {
+                <button (click)="startDraw('Polygon')" class="text-sm" [class]="drawMode() === 'Polygon' ? 'btn-primary' : 'btn-secondary'">⬡ Polígono</button>
+              }
+              <button (click)="toggleEditMode()" class="text-sm" [class]="editMode() ? 'btn-primary' : 'btn-secondary'">
+                ✏️ {{ editMode() ? 'Edición ON' : 'Editar' }}
+              </button>
+            </div>
           @if (drawMode() !== 'none') {
             <div class="mt-3 flex gap-2">
               @if (drawMode() !== 'Point') {
@@ -183,6 +190,59 @@
             </div>
           }
         </div>
+
+        @if (editMode() && editingFeature()) {
+          <div class="glass p-4">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium text-white/60">Vértices de "{{ editingFeature().name }}"</p>
+              <button (click)="deselectFeature()" class="text-xs text-white/40 hover:text-white">Deseleccionar</button>
+            </div>
+            <div class="space-y-1 max-h-48 overflow-y-auto">
+              @for (v of editVertices(); track i; let i = $index) {
+                <div class="flex items-center justify-between py-1 px-2 rounded bg-white/5 hover:bg-white/10 text-xs">
+                  <span class="text-white/70">V{{ i + 1 }}</span>
+                  <span class="text-white/40 font-mono">{{ v[1] | number:'1.5-5' }}, {{ v[0] | number:'1.5-5' }}</span>
+                  @if (editingFeature().geometry.type !== 'Point') {
+                    <button (click)="deleteVertex(i)" class="text-red-400 hover:text-red-300 ml-2">✕</button>
+                  }
+                </div>
+              }
+            </div>
+            <p class="text-xs text-white/30 mt-2">Arrastra vértices · Clic en puntos medios para agregar · ✕ para eliminar</p>
+          </div>
+        }
+
+        @if (editMode() && !editingFeature()) {
+          <div class="glass p-4">
+            <p class="text-xs text-white/40 text-center py-2">Haz clic en un elemento del mapa para editarlo</p>
+          </div>
+        }
+
+        @if (selectedLayer()?.style?.geomType === 'Point') {
+          <div class="glass p-4">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium text-white/60">Íconos SVG</p>
+              <label class="text-xs text-primary-400 hover:text-primary-300 cursor-pointer">
+                + Subir SVG
+                <input type="file" accept=".svg" class="hidden" (change)="uploadIcon($event)">
+              </label>
+            </div>
+            <div class="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto">
+              @for (icon of icons(); track icon.name) {
+                <div (click)="selectIcon(icon.url)"
+                     class="w-10 h-10 rounded flex items-center justify-center cursor-pointer border transition-all"
+                     [class]="selectedIcon() === icon.url ? 'border-primary-400 bg-primary-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'">
+                  <img [src]="icon.url" class="w-6 h-6" [alt]="icon.name">
+                </div>
+              } @empty {
+                <p class="col-span-5 text-white/20 text-xs text-center py-2">Sin íconos</p>
+              }
+            </div>
+            @if (selectedIcon()) {
+              <p class="text-xs text-primary-400 mt-2">Ícono seleccionado — se aplicará al próximo punto</p>
+            }
+          </div>
+        }
 
         <!-- Lista de features -->
         <div class="glass p-4">

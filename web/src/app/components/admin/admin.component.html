@@ -4,6 +4,8 @@
     <button (click)="switchTab('users')" [class]="activeTab() === 'users' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Usuarios</button>
     <button (click)="switchTab('maps')" [class]="activeTab() === 'maps' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Mapas y Capas</button>
     <button (click)="switchTab('audit')" [class]="activeTab() === 'audit' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Auditoría</button>
+    <button (click)="switchTab('billing')" [class]="activeTab() === 'billing' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Facturación</button>
+    <button (click)="switchTab('billing')" [class]="activeTab() === 'billing' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Plan</button>
   </div>
 
   <!-- === USUARIOS === -->
@@ -166,4 +168,89 @@
       </div>
     </div>
   }
+
+  <!-- === PLAN Y FACTURACIÓN === -->
+  @if (activeTab() === 'billing') {
+    @if (billingStatus()) {
+      <div class="space-y-6">
+        <!-- Plan actual -->
+        <div class="glass p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-semibold">Plan actual</h2>
+              <span class="text-2xl font-bold" [class]="billingStatus().plan === 'PRO' ? 'text-amber-400' : billingStatus().plan === 'BASIC' ? 'text-primary-400' : 'text-white/50'">
+                {{ billingStatus().plan }}
+              </span>
+            </div>
+            @if (billingStatus().hasSubscription) {
+              <button (click)="openPortal()" class="btn-secondary text-sm">Gestionar suscripción</button>
+            }
+          </div>
+
+          <!-- Uso actual -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="glass-dark p-4 rounded-lg">
+              <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Usuarios</p>
+              <p class="text-xl font-bold">{{ billingStatus().usage.users }} <span class="text-sm font-normal text-white/40">/ {{ billingStatus().limits.maxUsers === -1 ? '∞' : billingStatus().limits.maxUsers }}</span></p>
+              @if (billingStatus().limits.maxUsers !== -1) {
+                <div class="w-full bg-white/10 rounded-full h-1.5 mt-2">
+                  <div class="h-1.5 rounded-full transition-all" [style.width.%]="usagePercent(billingStatus().usage.users, billingStatus().limits.maxUsers)"
+                       [class]="usagePercent(billingStatus().usage.users, billingStatus().limits.maxUsers) > 80 ? 'bg-red-500' : 'bg-primary-500'"></div>
+                </div>
+              }
+            </div>
+            <div class="glass-dark p-4 rounded-lg">
+              <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Mapas</p>
+              <p class="text-xl font-bold">{{ billingStatus().usage.maps }} <span class="text-sm font-normal text-white/40">/ {{ billingStatus().limits.maxMaps === -1 ? '∞' : billingStatus().limits.maxMaps }}</span></p>
+              @if (billingStatus().limits.maxMaps !== -1) {
+                <div class="w-full bg-white/10 rounded-full h-1.5 mt-2">
+                  <div class="h-1.5 rounded-full transition-all" [style.width.%]="usagePercent(billingStatus().usage.maps, billingStatus().limits.maxMaps)"
+                       [class]="usagePercent(billingStatus().usage.maps, billingStatus().limits.maxMaps) > 80 ? 'bg-red-500' : 'bg-primary-500'"></div>
+                </div>
+              }
+            </div>
+            <div class="glass-dark p-4 rounded-lg">
+              <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Capas</p>
+              <p class="text-xl font-bold">{{ billingStatus().usage.layers }} <span class="text-sm font-normal text-white/40">/ {{ billingStatus().limits.maxLayers === -1 ? '∞' : billingStatus().limits.maxLayers }}</span></p>
+              @if (billingStatus().limits.maxLayers !== -1) {
+                <div class="w-full bg-white/10 rounded-full h-1.5 mt-2">
+                  <div class="h-1.5 rounded-full transition-all" [style.width.%]="usagePercent(billingStatus().usage.layers, billingStatus().limits.maxLayers)"
+                       [class]="usagePercent(billingStatus().usage.layers, billingStatus().limits.maxLayers) > 80 ? 'bg-red-500' : 'bg-primary-500'"></div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Planes disponibles -->
+        @if (billingStatus().plan !== 'PRO') {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @if (billingStatus().plan === 'FREE') {
+              <div class="glass p-6 border-primary-500/30">
+                <h3 class="text-lg font-bold text-primary-400 mb-2">BASIC</h3>
+                <ul class="text-sm text-white/60 space-y-2 mb-4">
+                  <li>✓ 10 usuarios</li>
+                  <li>✓ 5 mapas</li>
+                  <li>✓ 15 capas</li>
+                </ul>
+                <button (click)="upgrade('BASIC')" class="btn-primary w-full text-sm">Actualizar a BASIC</button>
+              </div>
+            }
+            <div class="glass p-6 border-amber-500/30">
+              <h3 class="text-lg font-bold text-amber-400 mb-2">PRO</h3>
+              <ul class="text-sm text-white/60 space-y-2 mb-4">
+                <li>✓ Usuarios ilimitados</li>
+                <li>✓ Mapas ilimitados</li>
+                <li>✓ Capas ilimitadas</li>
+              </ul>
+              <button (click)="upgrade('PRO')" class="btn-primary w-full text-sm bg-amber-600 hover:bg-amber-700">Actualizar a PRO</button>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="glass p-8 text-center text-white/30">Cargando información del plan...</div>
+    }
+  }
+  
 </div>

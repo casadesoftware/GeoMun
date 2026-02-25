@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { PlanLimit } from '../auth/decorators/plan-limit.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,6 +16,8 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard, PlanGuard)
+  @PlanLimit('users')
   create(@Body() dto: CreateUserDto, @CurrentUser() user: any) {
     const tenantId = user.role === 'SUPERADMIN' && dto.tenantId ? dto.tenantId : user.tenantId;
     return this.usersService.create(dto, tenantId);

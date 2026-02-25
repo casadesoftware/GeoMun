@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { PlanLimit } from '../auth/decorators/plan-limit.decorator';
 
 @Controller('maps')
 export class MapsController {
@@ -31,7 +33,8 @@ export class MapsController {
   // === Endpoints protegidos ===
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PlanGuard)
+  @PlanLimit('maps')
   @Roles('SUPERADMIN', 'ADMIN', 'EDITOR')
   create(@Body() dto: CreateMapDto, @CurrentUser() user: any) {
     return this.mapsService.create(dto, user.id, user.tenantId);

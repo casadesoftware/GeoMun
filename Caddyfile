@@ -1,0 +1,3 @@
+pixelmapas.online {
+    reverse_proxy web:80
+}

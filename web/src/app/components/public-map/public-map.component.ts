@@ -124,7 +124,7 @@ export class PublicMapComponent implements OnInit, OnDestroy {
 
       (data.layers || []).forEach((layer: any) => {
         const color = layer.style?.color || '#3b82f6';
-        const features = (layer.features || []).map((f: any) => {
+        const rawFeatures = (layer.features || []).map((f: any) => {
           const geom = f.geometry;
           if (geom.type === 'Point') bounds.extend(geom.coordinates);
           else if (geom.type === 'LineString') geom.coordinates.forEach((c: any) => bounds.extend(c));
@@ -138,9 +138,9 @@ export class PublicMapComponent implements OnInit, OnDestroy {
         });
 
         const sourceId = `src-${layer.id}`;
-        this.glMap!.addSource(sourceId, {
+          this.glMap!.addSource(sourceId, {
           type: 'geojson',
-          data: { type: 'FeatureCollection', features },
+          data: { type: 'FeatureCollection', features: rawFeatures },
         });
 
         this.glMap!.addLayer({
@@ -163,12 +163,46 @@ export class PublicMapComponent implements OnInit, OnDestroy {
           id: `layer-circle-${layer.id}`,
           type: 'circle',
           source: sourceId,
-          filter: ['==', '$type', 'Point'],
+          filter: ['all', ['==', '$type', 'Point'], ['!has', 'icon']],
           paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
         });
 
+        this.glMap!.addLayer({
+          id: `layer-icon-${layer.id}`,
+          type: 'symbol',
+          source: sourceId,
+          filter: ['all', ['==', '$type', 'Point'], ['has', 'icon']],
+          layout: {
+            'icon-image': ['get', 'iconId'],
+            'icon-size': 1,
+            'icon-allow-overlap': true,
+            'icon-anchor': 'center',
+          },
+        });
+
+        // Load SVG icons
+        const iconsToLoad = rawFeatures.filter((f: any) => f.properties?.icon);
+        const uniqueUrls = [...new Set(iconsToLoad.map((f: any) => f.properties.icon))] as string[];
+        uniqueUrls.forEach((url) => {
+          const iconId = 'icon-' + url.replace(/[^a-z0-9]/gi, '_');
+          const img = new Image(32, 32);
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            if (!this.glMap!.hasImage(iconId)) {
+              this.glMap!.addImage(iconId, img);
+              (this.glMap!.getSource(sourceId) as maplibregl.GeoJSONSource).setData(
+                { type: 'FeatureCollection', features: rawFeatures.map((f: any) => {
+                  if (f.properties?.icon) f.properties.iconId = 'icon-' + f.properties.icon.replace(/[^a-z0-9]/gi, '_');
+                  return f;
+                })},
+              );
+            }
+          };
+          img.src = url;
+        });
+
         // Popup
-        [`layer-circle-${layer.id}`, `layer-fill-${layer.id}`, `layer-line-${layer.id}`].forEach((layerMapId) => {
+         [`layer-circle-${layer.id}`, `layer-icon-${layer.id}`, `layer-fill-${layer.id}`, `layer-line-${layer.id}`].forEach((layerMapId) => {
           this.glMap!.on('click', layerMapId, (e: any) => {
             const props = e.features[0].properties;
             let html = `<div style="font-size:13px"><strong style="font-size:14px">${props.name}</strong>`;
