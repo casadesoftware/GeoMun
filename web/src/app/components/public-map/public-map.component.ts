@@ -2,6 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, ElementRef, ViewChild } fr
 import { CommonModule, KeyValuePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import maplibregl from 'maplibre-gl';
+import { MAP_STYLES } from '../../shared/map-styles';
 
 @Component({
   selector: 'app-public-map',
@@ -23,6 +24,10 @@ export class PublicMapComponent implements OnInit, OnDestroy {
   layerVisibility = signal<Record<string, boolean>>({});
 
   private glMap: maplibregl.Map | null = null;
+
+  mapStyles = MAP_STYLES;
+  currentStyle = signal<string>('osm');
+  private currentMapData: any = null;
 
   constructor(private http: HttpClient) {}
 
@@ -95,23 +100,29 @@ export class PublicMapComponent implements OnInit, OnDestroy {
     });
   }
 
+  changeMapStyle(styleId: string) {
+    if (!this.glMap || styleId === this.currentStyle()) return;
+    this.currentStyle.set(styleId);
+    const style = this.mapStyles.find(s => s.id === styleId)?.style;
+    if (!style) return;
+
+    const center = this.glMap.getCenter();
+    const zoom = this.glMap.getZoom();
+
+    this.glMap.setStyle(style);
+    this.glMap.once('style.load', () => {
+      this.glMap!.setCenter(center);
+      this.glMap!.setZoom(zoom);
+      if (this.currentMapData) this.addMapLayers(this.currentMapData);
+    });
+  }
+
   private initPublicMap(data: any) {
     if (!this.mapEl?.nativeElement) return;
 
     this.glMap = new maplibregl.Map({
       container: this.mapEl.nativeElement,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '© OpenStreetMap',
-          },
-        },
-        layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-      },
+      style: this.mapStyles.find(s => s.id === this.currentStyle())!.style,
       center: [-99.13, 19.43],
       zoom: 12,
     });
@@ -119,107 +130,115 @@ export class PublicMapComponent implements OnInit, OnDestroy {
     this.glMap.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     this.glMap.on('load', () => {
-      const bounds = new maplibregl.LngLatBounds();
-      let hasFeatures = false;
-
-      (data.layers || []).forEach((layer: any) => {
-        const color = layer.style?.color || '#3b82f6';
-        const rawFeatures = (layer.features || []).map((f: any) => {
-          const geom = f.geometry;
-          if (geom.type === 'Point') bounds.extend(geom.coordinates);
-          else if (geom.type === 'LineString') geom.coordinates.forEach((c: any) => bounds.extend(c));
-          else if (geom.type === 'Polygon') geom.coordinates[0].forEach((c: any) => bounds.extend(c));
-          hasFeatures = true;
-          return {
-            type: 'Feature',
-            geometry: geom,
-            properties: { name: f.name, ...f.properties },
-          };
-        });
-
-        const sourceId = `src-${layer.id}`;
-          this.glMap!.addSource(sourceId, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: rawFeatures },
-        });
-
-        this.glMap!.addLayer({
-          id: `layer-fill-${layer.id}`,
-          type: 'fill',
-          source: sourceId,
-          filter: ['==', '$type', 'Polygon'],
-          paint: { 'fill-color': color, 'fill-opacity': 0.3 },
-        });
-
-        this.glMap!.addLayer({
-          id: `layer-line-${layer.id}`,
-          type: 'line',
-          source: sourceId,
-          filter: ['in', '$type', 'LineString', 'Polygon'],
-          paint: { 'line-color': color, 'line-width': layer.style?.weight || 2 },
-        });
-
-        this.glMap!.addLayer({
-          id: `layer-circle-${layer.id}`,
-          type: 'circle',
-          source: sourceId,
-          filter: ['all', ['==', '$type', 'Point'], ['!has', 'icon']],
-          paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
-        });
-
-        this.glMap!.addLayer({
-          id: `layer-icon-${layer.id}`,
-          type: 'symbol',
-          source: sourceId,
-          filter: ['all', ['==', '$type', 'Point'], ['has', 'icon']],
-          layout: {
-            'icon-image': ['get', 'iconId'],
-            'icon-size': 1,
-            'icon-allow-overlap': true,
-            'icon-anchor': 'center',
-          },
-        });
-
-        // Load SVG icons
-        const iconsToLoad = rawFeatures.filter((f: any) => f.properties?.icon);
-        const uniqueUrls = [...new Set(iconsToLoad.map((f: any) => f.properties.icon))] as string[];
-        uniqueUrls.forEach((url) => {
-          const iconId = 'icon-' + url.replace(/[^a-z0-9]/gi, '_');
-          const img = new Image(32, 32);
-          img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            if (!this.glMap!.hasImage(iconId)) {
-              this.glMap!.addImage(iconId, img);
-              (this.glMap!.getSource(sourceId) as maplibregl.GeoJSONSource).setData(
-                { type: 'FeatureCollection', features: rawFeatures.map((f: any) => {
-                  if (f.properties?.icon) f.properties.iconId = 'icon-' + f.properties.icon.replace(/[^a-z0-9]/gi, '_');
-                  return f;
-                })},
-              );
-            }
-          };
-          img.src = url;
-        });
-
-        // Popup
-         [`layer-circle-${layer.id}`, `layer-icon-${layer.id}`, `layer-fill-${layer.id}`, `layer-line-${layer.id}`].forEach((layerMapId) => {
-          this.glMap!.on('click', layerMapId, (e: any) => {
-            const props = e.features[0].properties;
-            let html = `<div style="font-size:13px"><strong style="font-size:14px">${props.name}</strong>`;
-            Object.keys(props).forEach((k) => {
-              if (k !== 'name' && props[k] != null && props[k] !== '') html += `<br><b>${k}:</b> ${props[k]}`;
-            });
-            html += '</div>';
-            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(this.glMap!);
-          });
-          this.glMap!.on('mouseenter', layerMapId, () => { this.glMap!.getCanvas().style.cursor = 'pointer'; });
-          this.glMap!.on('mouseleave', layerMapId, () => { this.glMap!.getCanvas().style.cursor = ''; });
-        });
-      });
-
-      if (hasFeatures && !bounds.isEmpty()) {
-        this.glMap!.fitBounds(bounds, { padding: 60, maxZoom: 16 });
-      }
+      this.currentMapData = data;
+      this.addMapLayers(data);
     });
   }
+
+  private addMapLayers(data: any) {
+    if (!this.glMap) return;
+    const bounds = new maplibregl.LngLatBounds();
+    let hasFeatures = false;
+
+    (data.layers || []).forEach((layer: any) => {
+      const color = layer.style?.color || '#3b82f6';
+      const rawFeatures = (layer.features || []).map((f: any) => {
+        const geom = f.geometry;
+        if (geom.type === 'Point') bounds.extend(geom.coordinates);
+        else if (geom.type === 'LineString') geom.coordinates.forEach((c: any) => bounds.extend(c));
+        else if (geom.type === 'Polygon') geom.coordinates[0].forEach((c: any) => bounds.extend(c));
+        hasFeatures = true;
+        return {
+          type: 'Feature',
+          geometry: geom,
+          properties: { name: f.name, ...f.properties },
+        };
+      });
+
+      const sourceId = `src-${layer.id}`;
+        this.glMap!.addSource(sourceId, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: rawFeatures },
+      });
+
+      this.glMap!.addLayer({
+        id: `layer-fill-${layer.id}`,
+        type: 'fill',
+        source: sourceId,
+        filter: ['==', '$type', 'Polygon'],
+        paint: { 'fill-color': color, 'fill-opacity': 0.3 },
+      });
+
+      this.glMap!.addLayer({
+        id: `layer-line-${layer.id}`,
+        type: 'line',
+        source: sourceId,
+        filter: ['in', '$type', 'LineString', 'Polygon'],
+        paint: { 'line-color': color, 'line-width': layer.style?.weight || 2 },
+      });
+
+      this.glMap!.addLayer({
+        id: `layer-circle-${layer.id}`,
+        type: 'circle',
+        source: sourceId,
+        filter: ['all', ['==', '$type', 'Point'], ['!has', 'icon']],
+        paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
+      });
+
+      this.glMap!.addLayer({
+        id: `layer-icon-${layer.id}`,
+        type: 'symbol',
+        source: sourceId,
+        filter: ['all', ['==', '$type', 'Point'], ['has', 'icon']],
+        layout: {
+          'icon-image': ['get', 'iconId'],
+          'icon-size': 1,
+          'icon-allow-overlap': true,
+          'icon-anchor': 'center',
+        },
+      });
+
+      // Load SVG icons
+      const iconsToLoad = rawFeatures.filter((f: any) => f.properties?.icon);
+      const uniqueUrls = [...new Set(iconsToLoad.map((f: any) => f.properties.icon))] as string[];
+      uniqueUrls.forEach((url) => {
+        const iconId = 'icon-' + url.replace(/[^a-z0-9]/gi, '_');
+        const img = new Image(32, 32);
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          if (!this.glMap!.hasImage(iconId)) {
+            this.glMap!.addImage(iconId, img);
+            (this.glMap!.getSource(sourceId) as maplibregl.GeoJSONSource).setData(
+              { type: 'FeatureCollection', features: rawFeatures.map((f: any) => {
+                if (f.properties?.icon) f.properties.iconId = 'icon-' + f.properties.icon.replace(/[^a-z0-9]/gi, '_');
+                return f;
+              })},
+            );
+          }
+        };
+        img.src = url;
+      });
+
+      // Popup
+        [`layer-circle-${layer.id}`, `layer-icon-${layer.id}`, `layer-fill-${layer.id}`, `layer-line-${layer.id}`].forEach((layerMapId) => {
+        this.glMap!.on('click', layerMapId, (e: any) => {
+          const props = e.features[0].properties;
+          let html = `<div style="font-size:13px"><strong style="font-size:14px">${props.name}</strong>`;
+          Object.keys(props).forEach((k) => {
+            if (!['name', 'icon', 'iconId'].includes(k) && props[k] != null && props[k] !== '') html += `<br><b>${k}:</b> ${props[k]}`;
+          });
+          html += '</div>';
+          new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(this.glMap!);
+        });
+        this.glMap!.on('mouseenter', layerMapId, () => { this.glMap!.getCanvas().style.cursor = 'pointer'; });
+        this.glMap!.on('mouseleave', layerMapId, () => { this.glMap!.getCanvas().style.cursor = ''; });
+      });
+    });
+
+    if (hasFeatures && !bounds.isEmpty()) {
+      this.glMap!.fitBounds(bounds, { padding: 60, maxZoom: 16 });
+    }
+  }
+
+
 }

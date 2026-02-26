@@ -39,7 +39,17 @@
 
       <!-- Mapa -->
       <div class="flex-1">
-        <div #publicMapContainer class="w-full h-full"></div>
+        <div class="relative w-full h-full">
+          <div #publicMapContainer class="w-full h-full"></div>
+          <div class="absolute top-2 left-2 z-10">
+            <select (change)="changeMapStyle($any($event.target).value)" [value]="currentStyle()"
+                    class="text-xs px-2 py-1.5 rounded-lg bg-dark-800/90 text-white border border-white/20 backdrop-blur-sm cursor-pointer hover:border-white/40 focus:outline-none focus:border-primary-400">
+              @for (s of mapStyles; track s.id) {
+                <option [value]="s.id">{{ s.icon }} {{ s.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   } @else {

@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray } fr
 import { ApiService } from '../../services/api.service';
 import Swal from 'sweetalert2';
 import maplibregl from 'maplibre-gl';
+import { MAP_STYLES, MapStyleOption } from '../../shared/map-styles';
 
 @Component({
   selector: 'app-editor',
@@ -49,6 +50,9 @@ export class EditorComponent implements OnInit, OnDestroy {
   private drawCoords: [number, number][] = [];
   private drawSourceAdded = false;
 
+  mapStyles = MAP_STYLES;
+  currentStyle = signal<string>('osm');
+
   constructor(private fb: FormBuilder, private api: ApiService) {
     this.mapForm = this.fb.group({
       name: ['', Validators.required],
@@ -87,18 +91,7 @@ export class EditorComponent implements OnInit, OnDestroy {
       if (!this.mapEl?.nativeElement || this.map) return;
       this.map = new maplibregl.Map({
         container: this.mapEl.nativeElement,
-        style: {
-          version: 8,
-          sources: {
-            osm: {
-              type: 'raster',
-              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-              tileSize: 256,
-              attribution: '© OpenStreetMap',
-            },
-          },
-          layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-        },
+        style: this.mapStyles.find(s => s.id === this.currentStyle())!.style,
         center: [-96.9603559, 19.4544623],
         zoom: 12,
       });
@@ -241,7 +234,9 @@ export class EditorComponent implements OnInit, OnDestroy {
 
     Swal.fire({
       title: 'Nombre del elemento',
-      html: `<input id="feat-name" class="swal2-input" placeholder="Nombre *" style="background:#1e293b;color:#fff;border:1px solid #334155">${fieldsHtml}`,
+      html: `<input id="feat-name" class="swal2-input" placeholder="Nombre *" style="background:#1e293b;color:#fff;border:1px solid #334155">
+            <input type="hidden" id="selected-icon-url" value="${this.selectedIcon() || ''}">
+            ${fieldsHtml}`,
       background: '#0f172a',
       color: '#fff',
       showCancelButton: true,
@@ -302,25 +297,9 @@ export class EditorComponent implements OnInit, OnDestroy {
     const iconFeats = geojsonFeatures.filter((f: any) => f.properties.icon);
     const uniqueIcons = [...new Set(iconFeats.map((f: any) => f.properties.icon))];
 
-    Promise.all(uniqueIcons.map((url: string) => this.loadIconToMap(url))).then((iconIds) => {
-      const iconMap: Record<string, string> = {};
-      uniqueIcons.forEach((url: string, i: number) => { iconMap[url] = iconIds[i]; });
-
-      geojsonFeatures.forEach((f: any) => {
-        if (f.properties.icon && iconMap[f.properties.icon]) {
-          f.properties.iconId = iconMap[f.properties.icon];
-        }
-      });
-
-      const source = this.map?.getSource('editor-features') as maplibregl.GeoJSONSource;
-      if (source) source.setData(geojson);
-    });
-
-    // Si la fuente ya existe, solo actualizar datos
+    // Si la fuente no existe, crearla con data vacía + capas
     const existingSource = this.map.getSource('editor-features') as maplibregl.GeoJSONSource;
-    if (existingSource) {
-      existingSource.setData(geojson);
-    } else {
+    if (!existingSource) {
       this.map.addSource('editor-features', { type: 'geojson', data: geojson });
 
       this.map.addLayer({
@@ -360,6 +339,21 @@ export class EditorComponent implements OnInit, OnDestroy {
         },
       });
     }
+
+    // Cargar íconos y LUEGO setData (una sola vez, con iconId resuelto)
+    Promise.all(uniqueIcons.map((url: string) => this.loadIconToMap(url))).then((iconIds) => {
+      const iconMap: Record<string, string> = {};
+      uniqueIcons.forEach((url: string, i: number) => { iconMap[url] = iconIds[i]; });
+
+      geojsonFeatures.forEach((f: any) => {
+        if (f.properties.icon && iconMap[f.properties.icon]) {
+          f.properties.iconId = iconMap[f.properties.icon];
+        }
+      });
+
+      const source = this.map?.getSource('editor-features') as maplibregl.GeoJSONSource;
+      if (source) source.setData(geojson);
+    });
 
     // Listeners solo una vez
     if (!this.featuresListenersAdded) {
@@ -430,7 +424,7 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   private buildPopupHtml(props: any): string {
     let html = `<div style="color:#000;font-size:13px"><strong style="font-size:14px">${props.name}</strong>`;
-    const skip = ['name', 'id'];
+    const skip = ['name', 'id', 'icon', 'iconId'];
     Object.keys(props).forEach((k) => {
       if (!skip.includes(k) && props[k] != null && props[k] !== '') {
         html += `<br><b>${k}:</b> ${props[k]}`;
@@ -470,7 +464,7 @@ export class EditorComponent implements OnInit, OnDestroy {
           const el = document.getElementById(`edit-field-${f.name}`) as HTMLInputElement;
           properties[f.name] = el?.value || null;
         });
-        return { name, properties };
+        return { name, properties: { ...properties, icon: feat.properties?.icon || null } };
       },
     }).then((result) => {
       if (result.isConfirmed && result.value) {
@@ -948,6 +942,28 @@ export class EditorComponent implements OnInit, OnDestroy {
 
   selectIcon(iconUrl: string) {
     this.selectedIcon.set(this.selectedIcon() === iconUrl ? null : iconUrl);
+  }
+
+  changeMapStyle(styleId: string) {
+    if (!this.map || styleId === this.currentStyle()) return;
+    this.currentStyle.set(styleId);
+    const style = this.mapStyles.find(s => s.id === styleId)?.style;
+    if (!style) return;
+
+    const center = this.map.getCenter();
+    const zoom = this.map.getZoom();
+
+    this.map.setStyle(style);
+    this.drawSourceAdded = false;
+    this.featuresListenersAdded = false;
+    this.loadedIcons.clear();
+
+    this.map.once('style.load', () => {
+      this.map!.setCenter(center);
+      this.map!.setZoom(zoom);
+      this.renderFeatures();
+      this.setupDrawSource();
+    });
   }
 
   private loadedIcons = new Set<string>();
