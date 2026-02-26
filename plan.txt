@@ -1,0 +1,15 @@
+docker exec -it geo_db psql -U geomun -d geomun
+
+CREATE TYPE "Plan" AS ENUM ('FREE', 'BASIC', 'PRO');
+
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "plan" "Plan" NOT NULL DEFAULT 'FREE';
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "max_users" INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "max_maps" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "max_layers" INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "stripe_customer_id" TEXT;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "stripe_subscription_id" TEXT;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "plan_expires_at" TIMESTAMP(3);
+\q
+
+docker restart geo_api
+
