@@ -9,6 +9,121 @@ import { MAP_STYLES } from '../../shared/map-styles';
   standalone: true,
   imports: [CommonModule, KeyValuePipe],
   templateUrl: './public-map.component.html',
+  styles: [`
+    :host { display: block; height: 100vh; width: 100vw; }
+
+    /* ===== Popup styling ===== */
+    ::ng-deep .maplibregl-popup-content {
+      background: rgba(15, 23, 42, 0.95) !important;
+      backdrop-filter: blur(16px) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      border-radius: 12px !important;
+      padding: 0 !important;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
+      max-width: 300px !important;
+      overflow: hidden;
+    }
+    ::ng-deep .maplibregl-popup-close-button {
+      color: rgba(255,255,255,0.5) !important;
+      font-size: 18px !important;
+      right: 6px !important;
+      top: 4px !important;
+      z-index: 2;
+    }
+    ::ng-deep .maplibregl-popup-close-button:hover {
+      color: #fff !important;
+      background: transparent !important;
+    }
+    ::ng-deep .maplibregl-popup-tip {
+      border-top-color: rgba(15, 23, 42, 0.95) !important;
+    }
+
+    /* Popup inner styles */
+    ::ng-deep .pm-popup { padding: 14px 16px 12px; }
+    ::ng-deep .pm-popup-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+      padding-right: 16px;
+      line-height: 1.3;
+    }
+    ::ng-deep .pm-popup-field {
+      display: flex;
+      gap: 6px;
+      padding: 4px 0;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      align-items: flex-start;
+    }
+    ::ng-deep .pm-popup-field:last-child { border-bottom: none; }
+    ::ng-deep .pm-popup-key {
+      color: rgba(255,255,255,0.4);
+      font-weight: 500;
+      min-width: 0;
+      flex-shrink: 0;
+      text-transform: capitalize;
+    }
+    ::ng-deep .pm-popup-val {
+      color: rgba(255,255,255,0.85);
+      word-break: break-word;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Image thumbnail */
+    ::ng-deep .pm-popup-thumb {
+      width: 100%;
+      max-height: 140px;
+      object-fit: cover;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 2px;
+    }
+    ::ng-deep .pm-popup-thumb:hover { opacity: 0.85; }
+
+    /* URL link */
+    ::ng-deep .pm-popup-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #818cf8;
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.15s;
+    }
+    ::ng-deep .pm-popup-link:hover { color: #a5b4fc; text-decoration: underline; }
+    ::ng-deep .pm-popup-link svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    /* Navigation control styling */
+    ::ng-deep .maplibregl-ctrl-group {
+      background: rgba(15, 23, 42, 0.9) !important;
+      backdrop-filter: blur(12px) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      border-radius: 12px !important;
+      overflow: hidden;
+    }
+    ::ng-deep .maplibregl-ctrl-group button {
+      background-color: transparent !important;
+      border-color: rgba(255,255,255,0.08) !important;
+    }
+    ::ng-deep .maplibregl-ctrl-group button span {
+      filter: invert(1) !important;
+    }
+
+    /* Attribution */
+    ::ng-deep .maplibregl-ctrl-attrib {
+      background: rgba(15, 23, 42, 0.7) !important;
+      backdrop-filter: blur(8px) !important;
+      font-size: 10px !important;
+    }
+    ::ng-deep .maplibregl-ctrl-attrib a { color: rgba(255,255,255,0.4) !important; }
+  `],
 })
 export class PublicMapComponent implements OnInit, OnDestroy {
   @Input() slug: string | null = null;
@@ -22,6 +137,8 @@ export class PublicMapComponent implements OnInit, OnDestroy {
   error = signal<string | null>(null);
 
   layerVisibility = signal<Record<string, boolean>>({});
+  sidebarOpen = signal(false);
+  lightboxUrl = signal<string | null>(null);
 
   private glMap: maplibregl.Map | null = null;
 
@@ -37,11 +154,27 @@ export class PublicMapComponent implements OnInit, OnDestroy {
     } else {
       this.loadPublicMaps();
     }
+
+    // Escuchar clicks de lightbox (delegado desde popups)
+    document.addEventListener('click', this.handleGlobalClick);
   }
 
   ngOnDestroy() {
     if (this.glMap) { this.glMap.remove(); this.glMap = null; }
+    document.removeEventListener('click', this.handleGlobalClick);
   }
+
+  private handleGlobalClick = (e: Event) => {
+    const target = e.target as HTMLElement;
+
+    // Lightbox trigger
+    if (target.classList.contains('pm-popup-thumb')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = target.getAttribute('data-full-url') || (target as HTMLImageElement).src;
+      this.lightboxUrl.set(url);
+    }
+  };
 
   loadMap(slug: string) {
     this.loading.set(true);
@@ -95,7 +228,7 @@ export class PublicMapComponent implements OnInit, OnDestroy {
 
     if (!this.glMap) return;
     const visible = vis[layerId] ? 'visible' : 'none';
-    [`layer-fill-${layerId}`, `layer-line-${layerId}`, `layer-circle-${layerId}`].forEach((id) => {
+    [`layer-fill-${layerId}`, `layer-line-${layerId}`, `layer-circle-${layerId}`, `layer-icon-${layerId}`].forEach((id) => {
       if (this.glMap!.getLayer(id)) this.glMap!.setLayoutProperty(id, 'visibility', visible);
     });
   }
@@ -110,11 +243,72 @@ export class PublicMapComponent implements OnInit, OnDestroy {
     const zoom = this.glMap.getZoom();
 
     this.glMap.setStyle(style);
-    this.glMap.once('style.load', () => {
-      this.glMap!.setCenter(center);
-      this.glMap!.setZoom(zoom);
-      if (this.currentMapData) this.addMapLayers(this.currentMapData);
+
+    let reloaded = false;
+    const reload = () => {
+      if (reloaded || !this.glMap) return;
+      reloaded = true;
+      this.glMap.setCenter(center);
+      this.glMap.setZoom(zoom);
+      if (this.currentMapData) {
+        this.addMapLayers(this.currentMapData);
+        this.applyLayerVisibility();
+      }
+    };
+
+    this.glMap.once('style.load', () => requestAnimationFrame(reload));
+    setTimeout(reload, 1000); // fallback de seguridad
+  }
+
+  private applyLayerVisibility() {
+    if (!this.glMap) return;
+    const vis = this.layerVisibility();
+    Object.keys(vis).forEach((layerId) => {
+      const visible = vis[layerId] ? 'visible' : 'none';
+      [`layer-fill-${layerId}`, `layer-line-${layerId}`, `layer-circle-${layerId}`, `layer-icon-${layerId}`].forEach((id) => {
+        if (this.glMap!.getLayer(id)) this.glMap!.setLayoutProperty(id, 'visibility', visible);
+      });
     });
+  }
+
+  geolocate() {
+    if (!this.glMap || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.glMap!.flyTo({
+          center: [pos.coords.longitude, pos.coords.latitude],
+          zoom: 15,
+          duration: 1500,
+        });
+      },
+      () => {},
+      { enableHighAccuracy: true },
+    );
+  }
+
+  fitToFeatures() {
+    if (!this.glMap || !this.currentMapData) return;
+    const bounds = new maplibregl.LngLatBounds();
+    let hasFeatures = false;
+
+    (this.currentMapData.layers || []).forEach((layer: any) => {
+      (layer.features || []).forEach((f: any) => {
+        const geom = f.geometry;
+        if (geom.type === 'Point') bounds.extend(geom.coordinates);
+        else if (geom.type === 'LineString') geom.coordinates.forEach((c: any) => bounds.extend(c));
+        else if (geom.type === 'Polygon') geom.coordinates[0].forEach((c: any) => bounds.extend(c));
+        hasFeatures = true;
+      });
+    });
+
+    if (hasFeatures && !bounds.isEmpty()) {
+      this.glMap.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 1000 });
+    }
+  }
+
+  getTotalFeatures(): number {
+    if (!this.map()) return 0;
+    return (this.map().layers || []).reduce((sum: number, l: any) => sum + (l.features?.length || 0), 0);
   }
 
   private initPublicMap(data: any) {
@@ -127,7 +321,7 @@ export class PublicMapComponent implements OnInit, OnDestroy {
       zoom: 12,
     });
 
-    this.glMap.addControl(new maplibregl.NavigationControl(), 'top-right');
+    this.glMap.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
 
     this.glMap.on('load', () => {
       this.currentMapData = data;
@@ -156,7 +350,7 @@ export class PublicMapComponent implements OnInit, OnDestroy {
       });
 
       const sourceId = `src-${layer.id}`;
-        this.glMap!.addSource(sourceId, {
+      this.glMap!.addSource(sourceId, {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: rawFeatures },
       });
@@ -166,7 +360,7 @@ export class PublicMapComponent implements OnInit, OnDestroy {
         type: 'fill',
         source: sourceId,
         filter: ['==', '$type', 'Polygon'],
-        paint: { 'fill-color': color, 'fill-opacity': 0.3 },
+        paint: { 'fill-color': color, 'fill-opacity': 0.25 },
       });
 
       this.glMap!.addLayer({
@@ -182,7 +376,12 @@ export class PublicMapComponent implements OnInit, OnDestroy {
         type: 'circle',
         source: sourceId,
         filter: ['all', ['==', '$type', 'Point'], ['!has', 'icon']],
-        paint: { 'circle-radius': 7, 'circle-color': color, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
+        paint: {
+          'circle-radius': 7,
+          'circle-color': color,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff',
+        },
       });
 
       this.glMap!.addLayer({
@@ -208,27 +407,27 @@ export class PublicMapComponent implements OnInit, OnDestroy {
         img.onload = () => {
           if (!this.glMap!.hasImage(iconId)) {
             this.glMap!.addImage(iconId, img);
-            (this.glMap!.getSource(sourceId) as maplibregl.GeoJSONSource).setData(
-              { type: 'FeatureCollection', features: rawFeatures.map((f: any) => {
+            (this.glMap!.getSource(sourceId) as maplibregl.GeoJSONSource).setData({
+              type: 'FeatureCollection',
+              features: rawFeatures.map((f: any) => {
                 if (f.properties?.icon) f.properties.iconId = 'icon-' + f.properties.icon.replace(/[^a-z0-9]/gi, '_');
                 return f;
-              })},
-            );
+              }),
+            });
           }
         };
         img.src = url;
       });
 
-      // Popup
-        [`layer-circle-${layer.id}`, `layer-icon-${layer.id}`, `layer-fill-${layer.id}`, `layer-line-${layer.id}`].forEach((layerMapId) => {
+      // Smart Popup
+      [`layer-circle-${layer.id}`, `layer-icon-${layer.id}`, `layer-fill-${layer.id}`, `layer-line-${layer.id}`].forEach((layerMapId) => {
         this.glMap!.on('click', layerMapId, (e: any) => {
           const props = e.features[0].properties;
-          let html = `<div style="font-size:13px"><strong style="font-size:14px">${props.name}</strong>`;
-          Object.keys(props).forEach((k) => {
-            if (!['name', 'icon', 'iconId'].includes(k) && props[k] != null && props[k] !== '') html += `<br><b>${k}:</b> ${props[k]}`;
-          });
-          html += '</div>';
-          new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(this.glMap!);
+          const html = this.buildSmartPopup(props);
+          new maplibregl.Popup({ maxWidth: '300px', closeButton: true })
+            .setLngLat(e.lngLat)
+            .setHTML(html)
+            .addTo(this.glMap!);
         });
         this.glMap!.on('mouseenter', layerMapId, () => { this.glMap!.getCanvas().style.cursor = 'pointer'; });
         this.glMap!.on('mouseleave', layerMapId, () => { this.glMap!.getCanvas().style.cursor = ''; });
@@ -240,5 +439,97 @@ export class PublicMapComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Detecta si un valor es URL de imagen */
+  private isImageUrl(value: string): boolean {
+    if (typeof value !== 'string') return false;
+    const v = value.toLowerCase().trim();
+    return /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(v) ||
+           v.includes('/images/') && v.startsWith('http');
+  }
 
+  /** Detecta si un valor es una URL */
+  private isUrl(value: string): boolean {
+    if (typeof value !== 'string') return false;
+    const v = value.trim();
+    return /^https?:\/\//i.test(v);
+  }
+
+  /** Genera truncamiento elegante de URL para display */
+  private displayUrl(url: string): string {
+    try {
+      const u = new URL(url);
+      let display = u.hostname.replace('www.', '');
+      if (u.pathname.length > 1) {
+        const path = u.pathname.length > 20 ? u.pathname.slice(0, 20) + '…' : u.pathname;
+        display += path;
+      }
+      return display;
+    } catch {
+      return url.length > 35 ? url.slice(0, 35) + '…' : url;
+    }
+  }
+
+  /** Construye HTML del popup con detección inteligente de contenido */
+  private buildSmartPopup(props: any): string {
+    const skip = ['name', 'icon', 'iconId'];
+    let fieldsHtml = '';
+    const images: string[] = [];
+
+    Object.keys(props).forEach((k) => {
+      if (skip.includes(k) || props[k] == null || props[k] === '') return;
+
+      const val = String(props[k]);
+
+      if (this.isImageUrl(val)) {
+        // Acumular imágenes para mostrarlas al final
+        images.push(val);
+      } else if (this.isUrl(val)) {
+        // Link externo con icono
+        fieldsHtml += `
+          <div class="pm-popup-field">
+            <span class="pm-popup-key">${this.escapeHtml(k)}:</span>
+            <span class="pm-popup-val">
+              <a href="${this.escapeHtml(val)}" target="_blank" rel="noopener noreferrer" class="pm-popup-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                ${this.escapeHtml(this.displayUrl(val))}
+              </a>
+            </span>
+          </div>`;
+      } else {
+        // Campo de texto normal
+        fieldsHtml += `
+          <div class="pm-popup-field">
+            <span class="pm-popup-key">${this.escapeHtml(k)}:</span>
+            <span class="pm-popup-val">${this.escapeHtml(val)}</span>
+          </div>`;
+      }
+    });
+
+    // Agregar thumbnails de imágenes
+    let imagesHtml = '';
+    if (images.length > 0) {
+      imagesHtml = images.map((url) => `
+        <img src="${this.escapeHtml(url)}"
+             class="pm-popup-thumb"
+             data-full-url="${this.escapeHtml(url)}"
+             loading="lazy"
+             alt="Foto"
+             onerror="this.style.display='none'" />
+      `).join('');
+    }
+
+    return `
+      <div class="pm-popup">
+        <div class="pm-popup-title">${this.escapeHtml(props.name || 'Sin nombre')}</div>
+        ${fieldsHtml}
+        ${imagesHtml}
+      </div>
+    `;
+  }
+
+  private escapeHtml(str: string): string {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
 }

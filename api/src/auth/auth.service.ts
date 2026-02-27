@@ -76,6 +76,7 @@ export class AuthService {
         name,
         role: 'ADMIN',
         tenantId: tenant.id,
+        active: false,
       },
     });
 
@@ -97,15 +98,20 @@ export class AuthService {
       return { success: false, reason: 'expired' };
     }
 
-    await this.prisma.tenant.update({
-      where: { id: tenant.id },
-      data: {
-        active: true,
-        emailVerified: true,
-        verificationToken: null,
-        tokenExpiresAt: null,
-      },
-    });
+  await this.prisma.tenant.update({
+    where: { id: tenant.id },
+    data: {
+      active: true,
+      emailVerified: true,
+      verificationToken: null,
+      tokenExpiresAt: null,
+    },
+  });
+
+  await this.prisma.user.updateMany({
+    where: { tenantId: tenant.id, role: 'ADMIN' },
+    data: { active: true },
+  });
 
     return { success: true };
   }
