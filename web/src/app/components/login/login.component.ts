@@ -1,4 +1,4 @@
-import { Component, signal, AfterViewInit } from '@angular/core';
+import { Component, signal, AfterViewInit, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -14,6 +14,8 @@ import Swal from 'sweetalert2';
 export class LoginComponent implements AfterViewInit {
   form: FormGroup;
   loading = signal(false);
+
+  @Output() goToRegister = new EventEmitter<void>();
 
   constructor(
     private fb: FormBuilder,

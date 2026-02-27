@@ -5,7 +5,12 @@
     <div class="text-center mb-8">
       <img src="assets/isotipo80.png" alt="PixelMapas" class="mx-auto mb-4">
       <h1 class="text-3xl font-bold text-white mb-2">Pixel Mapas</h1>
-      <p class="text-white/50 text-sm">Sistema de Gestión de Mapas</p>
+      <div class="text-center mt-4 mb-8">
+        <p class="text-sm text-white/40">
+          ¿No tienes cuenta?
+          <button (click)="goToRegister.emit()" class="text-primary-400 hover:text-primary-300">Regístrate</button>
+        </p>
+      </div>
     </div>
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">

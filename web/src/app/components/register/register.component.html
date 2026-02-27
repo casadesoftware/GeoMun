@@ -1,0 +1,67 @@
+<div class="min-h-screen flex items-center justify-center p-4">
+  <div class="glass p-8 w-full max-w-md">
+    @if (success()) {
+      <div class="text-center">
+        <div class="text-5xl mb-4">📧</div>
+        <h2 class="text-xl font-bold mb-2">¡Revisa tu correo!</h2>
+        <p class="text-white/60 mb-6">
+          Enviamos un enlace de verificación a <strong class="text-white">{{ email }}</strong>.
+          Haz clic en él para activar tu cuenta.
+        </p>
+        <button (click)="back.emit()" class="text-primary-400 hover:text-primary-300">
+          ← Volver al login
+        </button>
+      </div>
+    } @else {
+      <h2 class="text-2xl font-bold text-center mb-6">Crear cuenta</h2>
+
+      @if (error()) {
+        <div class="bg-red-500/20 border border-red-500/30 rounded-lg p-3 mb-4 text-sm text-red-300">
+          {{ error() }}
+        </div>
+      }
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm text-white/60 mb-1">Nombre de organización</label>
+          <input [(ngModel)]="orgName" type="text" placeholder="Ej: Nombre de tu organización"
+                 class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 focus:border-primary-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-sm text-white/60 mb-1">Nombre completo</label>
+          <input [(ngModel)]="name" type="text" placeholder="Tu nombre"
+                 class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 focus:border-primary-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-sm text-white/60 mb-1">Email</label>
+          <input [(ngModel)]="email" type="email" placeholder="tu@email.com"
+                 class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 focus:border-primary-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-sm text-white/60 mb-1">Contraseña</label>
+          <input [(ngModel)]="password" type="password" placeholder="Mínimo 8 caracteres"
+                 class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 focus:border-primary-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-sm text-white/60 mb-1">Confirmar contraseña</label>
+          <input [(ngModel)]="confirmPassword" type="password" placeholder="Repite tu contraseña"
+                 class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/30 focus:border-primary-500 focus:outline-none">
+        </div>
+
+        <button (click)="register()" [disabled]="loading()"
+                class="w-full bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition">
+          {{ loading() ? 'Registrando...' : 'Crear cuenta' }}
+        </button>
+      </div>
+
+      <p class="text-center text-sm text-white/40 mt-6">
+        ¿Ya tienes cuenta?
+        <button (click)="back.emit()" class="text-primary-400 hover:text-primary-300">Inicia sesión</button>
+      </p>
+    }
+  </div>
+</div>

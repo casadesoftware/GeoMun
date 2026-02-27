@@ -6,16 +6,18 @@ import { AdminComponent } from './components/admin/admin.component';
 import { EditorComponent } from './components/editor/editor.component';
 import { PublicMapComponent } from './components/public-map/public-map.component';
 import { SuperadminComponent } from './components/superadmin/superadmin.component';
+import { RegisterComponent } from './components/register/register.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, LoginComponent, AdminComponent, EditorComponent, PublicMapComponent, SuperadminComponent],
+  imports: [CommonModule, LoginComponent, AdminComponent, EditorComponent, PublicMapComponent, SuperadminComponent, RegisterComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent {
   isPublicRoute = signal(false);
   publicSlug = signal<string | null>(null);
+  showRegister = signal(false);
 
   constructor(public auth: AuthService) {
     this.checkPublicRoute();

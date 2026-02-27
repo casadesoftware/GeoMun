@@ -1,7 +1,11 @@
 @if (view() === 'public') {
   <app-public-map [slug]="publicSlug()" />
 } @else if (view() === 'login') {
-  <app-login />
+  @if (showRegister()) {
+    <app-register (back)="showRegister.set(false)" />
+  } @else {
+    <app-login (goToRegister)="showRegister.set(true)" />
+  }
 } @else {
   <div class="min-h-screen flex flex-col">
     <!-- Navbar -->

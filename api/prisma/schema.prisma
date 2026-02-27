@@ -32,6 +32,9 @@ model Tenant {
   stripeCustomerId   String? @map("stripe_customer_id")
   stripeSubscriptionId String? @map("stripe_subscription_id")
   planExpiresAt DateTime? @map("plan_expires_at")
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  verificationToken String?   @map("verification_token")
+  tokenExpiresAt    DateTime? @map("token_expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
